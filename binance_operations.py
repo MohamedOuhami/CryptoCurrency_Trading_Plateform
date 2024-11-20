@@ -1,4 +1,6 @@
 import requests
+import asyncio
+import time
 from pyspark.sql import SparkSession
 from pyspark import SparkConf
 import matplotlib.pyplot as plt
@@ -32,7 +34,7 @@ my_resource = "binance_data"  # Elasticsearch index name (without type, if not u
 my_query = '{"query":{"match_all": {}}}'  # Elasticsearch query (match all documents)
 
 # Function to read data from Elasticsearch and return the DataFrame
-def get_data_from_elasticsearch():
+async def get_data_from_elasticsearch():
     df = spark.read \
         .format("org.elasticsearch.spark.sql") \
         .option("es.resource", my_resource) \
@@ -41,35 +43,45 @@ def get_data_from_elasticsearch():
 
     return df.toPandas()  # Return as pandas DataFrame for easy manipulation
 
+plot_placeholder = st.empty()
+table_placeholder = st.empty()
+fetch_count_placeholder = st.empty()
 # Create columns for layout
 col1, col2 = st.columns([10, 1])  # Adjust the ratio of columns (3:1 for plot and additional info)
 
+fetch_count = 1
 # Left column for plot
 with col1:
     # Button to trigger data fetch and plot update
-    if st.button('Fetch Latest Data'):
+    if st.button('Start getting data'):
         # Fetch data from Elasticsearch
-        pandas_df = get_data_from_elasticsearch()
+        while True:
+                
+            pandas_df = asyncio.run(get_data_from_elasticsearch())
 
-        if not pandas_df.empty:
-            # Extract price data and convert to float
-            prices = pandas_df['price'].astype(float)  # Ensure 'price' is float for plotting
+            if not pandas_df.empty:
+                fetch_count +=1 
+                # Extract price data and convert to float
+                prices = pandas_df['price'].astype(float)  # Ensure 'price' is float for plotting
+                pandas_df['fetch_count'] = fetch_count
 
-            # Plot the data by order
-            fig, ax = plt.subplots(figsize=(8, 4))  # Adjust figure size for a more compact chart
-            ax.plot(prices, label='Price', color='green')
-            ax.set_title('Currency Price Change', fontsize=14)
-            ax.set_xlabel('Order', fontsize=12)
-            ax.set_ylabel('Price ($)', fontsize=12)
+                # Plot the data by order
+                fig, ax = plt.subplots(figsize=(8, 4))  # Adjust figure size for a more compact chart
+                ax.plot(prices, label='Price', color='green')
+                ax.set_title('Currency Price Change', fontsize=14)
+                ax.set_xlabel('Order', fontsize=12)
+                ax.set_ylabel('Price ($)', fontsize=12)
 
-            # Add tighter padding around the plot
-            plt.tight_layout()
+                # Add tighter padding around the plot
+                plt.tight_layout()
 
-            # Show the plot in Streamlit
-            st.pyplot(fig)
-        else:
-            st.write("No data found in Elasticsearch.")
-
+                # Show the plot in Streamlit
+                plot_placeholder.pyplot(fig)
+                table_placeholder.write(pandas_df)
+                fetch_count_placeholder.write(f"Data fetched {fetch_count}")
+            else:
+                st.write("No data found in Elasticsearch.")
+            time.sleep(10)
 
 # Optional: Stop the Spark session
 # spark.stop()

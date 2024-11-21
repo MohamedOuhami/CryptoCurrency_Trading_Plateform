@@ -69,7 +69,7 @@ with col1:
                 fig, ax = plt.subplots(figsize=(8, 4))  # Adjust figure size for a more compact chart
                 ax.plot(prices, label='Price', color='green')
                 ax.set_title('Currency Price Change', fontsize=14)
-                ax.set_xlabel('Order', fontsize=12)
+
                 ax.set_ylabel('Price ($)', fontsize=12)
 
                 # Add tighter padding around the plot

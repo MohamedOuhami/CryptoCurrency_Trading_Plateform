@@ -17,7 +17,7 @@ services:
       timeout: 20s
       retries: 20
     networks:
-      - my_persistent_network
+      - binance_app_network
 # version control for nifi flows
   registry:
       hostname: myregistry
@@ -35,7 +35,7 @@ services:
           - ./nifi_registry/database:/opt/nifi-registry/nifi-registry-current/database
           - ./nifi_registry/flow_storage:/opt/nifi-registry/nifi-registry-current/flow_storage
       networks:
-          - my_persistent_network
+          - binance_app_network
 
 # data extraction, transformation and load service
   spark-worker:
@@ -50,7 +50,7 @@ services:
       SPARK_WORKER_MEMORY: 2g
       SPARK_MASTER_URL: spark://spark-master:7077
     networks:
-      - my_persistent_network
+      - binance_app_network
       
   spark-master:
     container_name: spark-master-elasticsearch
@@ -60,7 +60,7 @@ services:
       - "9090:8080"
       - "7077:7077"
     networks:
-      - my_persistent_network
+      - binance_app_network
     volumes:
       - ./binance_data/dist/elasticsearch-hadoop-8.7.1.jar:/opt/bitnami/spark/jars/elasticsearch-hadoop-8.7.1.jar
       
@@ -94,7 +94,7 @@ services:
           # uncomment the next line after copying the /conf directory from the container to your local directory to persist NiFi flows
           #- ./nifi/conf:/opt/nifi/nifi-current/conf
       networks:
-          - my_persistent_network
+          - binance_app_network
 
   # Elastic Search
   setup:
@@ -150,7 +150,7 @@ services:
       timeout: 10s
       retries: 120
     networks:
-      - my_persistent_network
+      - binance_app_network
 
   es02:
     depends_on:
@@ -183,9 +183,9 @@ services:
       timeout: 10s
       retries: 120
     networks:
-      - my_persistent_network
+      - binance_app_network
 networks:
-  my_persistent_network:
+  binance_app_network:
     driver: bridge
 
 volumes:

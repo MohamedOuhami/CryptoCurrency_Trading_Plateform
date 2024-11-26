@@ -7,7 +7,7 @@ from pyspark import SparkConf
 import pandas as pd
 
 # Initialize Streamlit page configuration
-st.set_page_config(page_title="Currency Price Change", layout="wide")
+st.set_page_config(page_title="INVESTLY",page_icon="📊",layout="wide")
 
 # Initialize SparkConf object
 conf = SparkConf()
@@ -54,12 +54,21 @@ if 'previous_symbol' not in st.session_state:
     st.session_state['previous_symbol'] = None
 
 # Sidebar for controls and table display
+# Sidebar for website name with colored letters and white border
+st.sidebar.markdown(
+    """
+    <h1 style='text-align: center; font-weight: bold; font-size: 70px; font-family: Impact; 
+               text-shadow: 1px 1px 0px white, -1px -1px 0px white, 1px -1px 0px white, -1px 1px 0px white;'>
+        <span style="color: red;">INVE</span><span style="color: green;">STLY</span>
+    </h1>
+    """, 
+    unsafe_allow_html=True
+)
 st.sidebar.header("Controls")
 table_placeholder = st.sidebar.empty()
 
 # Dropdown for selecting refresh interval
-refresh_interval = st.sidebar.slider(
-    "Refresh Interval (seconds)", min_value=1, max_value=30, value=10)
+refresh_interval = st.sidebar.number_input("Refresh Interval (seconds)", min_value=1, max_value=30, value=10, step=1)
 
 # Dropdown for selecting symbol (in the sidebar)
 selected_symbol = st.sidebar.selectbox(
@@ -71,12 +80,12 @@ selected_strategy = st.sidebar.radio(
     key="strategy"
 )
 # Placeholder for the plot
-st.title("Real-Time Currency Price Dashboard")
-plot_placeholder = st.empty()
+st.title("Dashboard")
+plot_placeholder1 = st.empty()
+plot_placeholder2 = st.empty()
+plot_placeholder3 = st.empty()
 
 # Function to process and update session state with new data
-
-
 def process_data():
     pandas_df = get_data_from_elasticsearch()
     if not pandas_df.empty:
@@ -91,10 +100,6 @@ def process_data():
         st.session_state['symbols'] = list(
             st.session_state['symbol_data'].keys())
     return pandas_df
-
-# Function to update the graph and table
-
-# TODO : Add the trading strategies
 
 
 def calculate_ma(prices, short_window=10, long_window=50):
@@ -167,15 +172,6 @@ def generate_bollinger_signals(prices, upper_band, lower_band):
     return signals
 
 
-# Assuming these functions exist and are defined elsewhere:
-# - process_data()
-# - calculate_ma()
-# - generate_signals()
-# - calculate_rsi()
-# - calculate_bollinger_bands()
-# - generate_bollinger_signals()
-
-
 def simulate_trading(prices, signals, initial_investment=1000):
     cash = initial_investment  # Starting cash
     portfolio = 0  # Cryptocurrency amount the user owns
@@ -216,50 +212,43 @@ def update_dashboard():
 
         # Calculate moving averages and signals
         prices_series = pd.Series(prices)
-        short_ma, long_ma = calculate_ma(prices_series)
-        signals = generate_signals(short_ma, long_ma)
-
         if selected_strategy == "Moving Averages":
             short_ma, long_ma = calculate_ma(prices_series)
             signals = generate_signals(short_ma, long_ma)
         elif selected_strategy == "Bollinger Bands":
-            middle_band, upper_band, lower_band = calculate_bollinger_bands(
-                prices_series)
-            signals = generate_bollinger_signals(
-                prices_series, upper_band, lower_band)
+            middle_band, upper_band, lower_band = calculate_bollinger_bands(prices_series)
+            signals = generate_bollinger_signals(prices_series, upper_band, lower_band)
         elif selected_strategy == 'RSI':
             rsi = calculate_rsi(prices)
-            signals = ["Buy" if rsi[i] < 30 else "Sell" if rsi[i]
-                       > 70 else "Hold" for i in range(len(rsi))]
+            signals = ["Buy" if rsi[i] < 30 else "Sell" if rsi[i] > 70 else "Hold" for i in range(len(rsi))]
 
         # Simulate trading based on signals and initial investment
-        final_value, trade_history = simulate_trading(
-            prices, signals, initial_investment)
+        final_value, trade_history = simulate_trading(prices, signals, initial_investment)
+
+        # Save investment data in session state
+        st.session_state['final_value'] = final_value
+        st.session_state['trade_history'] = pd.DataFrame(trade_history)
 
         # Plot the data
-        with plot_placeholder.container():
-            fig, (ax, ax2, ax3) = plt.subplots(3, 1, figsize=(
-                10, 10), gridspec_kw={'height_ratios': [3, 1, 3]})
+        with plot_placeholder1.container():
+            st.header("Moving Averages")
+            st.markdown("### Moving averages are statistical calculations used to smooth out short-term fluctuations and highlight longer-term trends in data. This plot shows the short (10) and long (50) moving averages for the selected symbol to help identify trends.")
+            fig, ax = plt.subplots(figsize=(7, 4))
 
             # Plot price data as candlesticks
             for i in range(1, len(prices)):
                 color = 'green' if prices[i] >= prices[i - 1] else 'red'
-                ax.vlines(i, min(prices[i], prices[i - 1]),
-                          max(prices[i], prices[i - 1]), color=color, lw=3)
+                ax.vlines(i, min(prices[i], prices[i - 1]), max(prices[i], prices[i - 1]), color=color, lw=3)
 
             # Plot moving averages
             ax.plot(short_ma, label="Short MA (10)", color='blue', alpha=0.8)
             ax.plot(long_ma, label="Long MA (50)", color='red', alpha=0.8)
 
             # Plot buy and sell signals
-            buy_signals = [i for i, signal in enumerate(
-                signals) if signal == 'Buy']
-            sell_signals = [i for i, signal in enumerate(
-                signals) if signal == 'Sell']
-            ax.scatter(buy_signals, [prices[i] for i in buy_signals],
-                       marker='^', color='green', label='Buy Signal', alpha=1)
-            ax.scatter(sell_signals, [prices[i] for i in sell_signals],
-                       marker='v', color='red', label='Sell Signal', alpha=1)
+            buy_signals = [i for i, signal in enumerate(signals) if signal == 'Buy']
+            sell_signals = [i for i, signal in enumerate(signals) if signal == 'Sell']
+            ax.scatter(buy_signals, [prices[i] for i in buy_signals], marker='^', color='green', label='Buy Signal', alpha=1)
+            ax.scatter(sell_signals, [prices[i] for i in sell_signals], marker='v', color='red', label='Sell Signal', alpha=1)
 
             # Set plot details
             ax.set_title(f'{selected_symbol} Price Change', fontsize=10)
@@ -268,44 +257,28 @@ def update_dashboard():
             ax.grid(True)
             ax.legend(fontsize=8)
 
+            # Layout adjustment
+            plt.tight_layout()
+
+            # Display the figure in Streamlit
+            st.pyplot(fig)
+            plt.close(fig)
+
+        with plot_placeholder2.container():
+            st.header("Relative Strength Index (RSI)")
+            st.markdown("### The Relative Strength Index (RSI) is a momentum oscillator that measures the speed and change of price movements. This plot shows the RSI, indicating overbought (70) and oversold (30) conditions, useful for spotting potential trend reversals")
+            fig, ax = plt.subplots(figsize=(7, 2))
+
             # RSI Plot
             rsi = calculate_rsi(prices)
-            ax2.plot(rsi, label="RSI", color='purple', lw=1.5)
-            ax2.axhline(70, color='red', linestyle='--',
-                        label='Overbought (70)')
-            ax2.axhline(30, color='green', linestyle='--',
-                        label='Oversold (30)')
-            ax2.set_title('Relative Strength Index (RSI)', fontsize=12)
-            ax2.set_xlabel('Time', fontsize=10)
-            ax2.set_ylabel('RSI', fontsize=10)
-            ax2.grid(True)
-            ax2.legend(fontsize=8)
-
-            # Bollinger Bands Plot
-            middle_band, upper_band, lower_band = calculate_bollinger_bands(
-                prices_series)
-            bollinger_signals = generate_bollinger_signals(
-                prices_series, upper_band, lower_band)
-            ax3.plot(prices_series, label='Price', color='green', lw=1.5)
-            ax3.plot(middle_band, label="Middle Band", color='blue', alpha=0.8)
-            ax3.plot(upper_band, label="Upper Band", color='red', alpha=0.8)
-            ax3.plot(lower_band, label="Lower Band", color='orange', alpha=0.8)
-
-            # Plot buy and sell signals for Bollinger Bands
-            for i, signal in enumerate(bollinger_signals):
-                if signal == "Buy":
-                    ax3.scatter(i, prices_series[i], color='green', marker='^',
-                                label='Buy Signal' if i == 0 else "", alpha=1)
-                elif signal == "Sell":
-                    ax3.scatter(i, prices_series[i], color='red', marker='v',
-                                label='Sell Signal' if i == 0 else "", alpha=1)
-
-            # Set plot details for Bollinger Bands
-            ax3.set_title('Bollinger Bands Strategy', fontsize=12)
-            ax3.set_xlabel('Time', fontsize=10)
-            ax3.set_ylabel('Price ($)', fontsize=10)
-            ax3.grid(True)
-            ax3.legend(fontsize=8)
+            ax.plot(rsi, label="RSI", color='purple', lw=1.5)
+            ax.axhline(70, color='red', linestyle='--', label='Overbought (70)')
+            ax.axhline(30, color='green', linestyle='--', label='Oversold (30)')
+            ax.set_title('Relative Strength Index (RSI)', fontsize=12)
+            ax.set_xlabel('Time', fontsize=10)
+            ax.set_ylabel('RSI', fontsize=10)
+            ax.grid(True)
+            ax.legend(fontsize=8)
 
             # Layout adjustment
             plt.tight_layout()
@@ -314,20 +287,47 @@ def update_dashboard():
             st.pyplot(fig)
             plt.close(fig)
 
-        # Update the table in the sidebar
-        filtered_df = data[data['symbol'] == selected_symbol]
-        table_placeholder.dataframe(filtered_df)
 
-        # Display Investment Info
+        with plot_placeholder3.container(): 
+            st.header("Bollinger Bands Strategy")
+            st.markdown("### Bollinger Bands are a volatility indicator that consists of a middle band (SMA), an upper band, and a lower band, which are used to assess price volatility. This plot displays the Bollinger Bands (upper, lower, and middle) along with buy/sell signals based on price action within the bands.")
+
+            fig, ax = plt.subplots(figsize=(7, 4))
+
+            # Bollinger Bands Plot
+            middle_band, upper_band, lower_band = calculate_bollinger_bands(prices_series)
+            bollinger_signals = generate_bollinger_signals(prices_series, upper_band, lower_band)
+            ax.plot(prices_series, label='Price', color='green', lw=1.5)
+            ax.plot(middle_band, label="Middle Band", color='blue', alpha=0.8)
+            ax.plot(upper_band, label="Upper Band", color='red', alpha=0.8)
+            ax.plot(lower_band, label="Lower Band", color='orange', alpha=0.8)
+
+            # Plot buy and sell signals for Bollinger Bands
+            for i, signal in enumerate(bollinger_signals):
+                if signal == "Buy":
+                    ax.scatter(i, prices_series[i], color='green', marker='^', label='Buy Signal' if i == 0 else "", alpha=1)
+                elif signal == "Sell":
+                    ax.scatter(i, prices_series[i], color='red', marker='v', label='Sell Signal' if i == 0 else "", alpha=1)
+
+            # Set plot details for Bollinger Bands
+            ax.set_title('Bollinger Bands Strategy', fontsize=12)
+            ax.set_xlabel('Time', fontsize=10)
+            ax.set_ylabel('Price ($)', fontsize=10)
+            ax.grid(True)
+            ax.legend(fontsize=8)
+
+            # Layout adjustment
+            plt.tight_layout()
+
+            # Display the figure in Streamlit
+            st.pyplot(fig)
+            plt.close(fig)
+
+        # Update Investment Info in Sidebar
         st.sidebar.write(f"Initial Investment: ${initial_investment}")
-        st.sidebar.write(f"Final Portfolio Value: ${final_value:.2f}")
-        st.sidebar.write(f"Trade History:")
-        trade_df = pd.DataFrame(trade_history)
-        st.sidebar.dataframe(trade_df)
-    else:
-        with plot_placeholder.container():
-            st.warning("Selected symbol has no data.")
-            table_placeholder.empty()  # Clear the table if no data is available
+        st.sidebar.write(f"Final Portfolio Value: ${st.session_state['final_value']:.2f}")
+        st.sidebar.write("Trade History:")
+        st.sidebar.dataframe(st.session_state['trade_history'])
 
 
 # Live update simulation based on refresh interval

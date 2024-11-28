@@ -1,3 +1,5 @@
+import sys
+import os
 import asyncio
 import time
 import matplotlib.pyplot as plt
@@ -7,23 +9,25 @@ from pyspark import SparkConf
 import pandas as pd
 
 # Initialize Streamlit page configuration
-st.set_page_config(page_title="INVESTLY",page_icon="📊",layout="wide")
+st.set_page_config(page_title="INVESTLY", page_icon="📊", layout="wide")
 
 # Initialize SparkConf object
 conf = SparkConf()
-conf.set("spark.driver.extraClassPath",
-         "C:/spark353/jars/elasticsearch-spark-30_2.12-8.16.0.jar")
-conf.set("es.nodes", "localhost:9200")
+# conf.set("spark.driver.extraClassPath",
+#        "C:/spark353/jars/elasticsearch-spark-30_2.12-8.16.0.jar")
+conf.set("es.nodes", "es01:9200")
 conf.set("es.nodes.discovery", "false")
 conf.set("es.node.data.only", "false")
 conf.set("es.net.http.auth.user", "elastic")
 conf.set("es.net.http.auth.pass", "v01d")
 conf.set("es.net.ssl", "false")
 conf.set("es.nodes.wan.only", "true")
-
+conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+conf.set("spark.kryo.registrationRequired", "false")
+conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 # Create SparkSession
 spark = SparkSession.builder \
-    .master("local[4]") \
+    .master("local[*]") \
     .appName("testing_elastic_search") \
     .config(conf=conf) \
     .getOrCreate()
@@ -33,6 +37,9 @@ my_resource = "binance_data"
 my_query = '{"query":{"match_all": {}}}'
 
 # Function to fetch data from Elasticsearch
+
+os.environ['PYSPARK_PYTHON'] = sys.executable
+os.environ['PYSPARK_DRIVER_PYTHON'] = sys.executable
 
 
 def get_data_from_elasticsearch():
@@ -61,14 +68,15 @@ st.sidebar.markdown(
                text-shadow: 1px 1px 0px white, -1px -1px 0px white, 1px -1px 0px white, -1px 1px 0px white;'>
         <span style="color: red;">INVE</span><span style="color: green;">STLY</span>
     </h1>
-    """, 
+    """,
     unsafe_allow_html=True
 )
 st.sidebar.header("Controls")
 table_placeholder = st.sidebar.empty()
 
 # Dropdown for selecting refresh interval
-refresh_interval = st.sidebar.number_input("Refresh Interval (seconds)", min_value=1, max_value=30, value=10, step=1)
+refresh_interval = st.sidebar.number_input(
+    "Refresh Interval (seconds)", min_value=1, max_value=30, value=10, step=1)
 
 # Dropdown for selecting symbol (in the sidebar)
 selected_symbol = st.sidebar.selectbox(
@@ -86,6 +94,8 @@ plot_placeholder2 = st.empty()
 plot_placeholder3 = st.empty()
 
 # Function to process and update session state with new data
+
+
 def process_data():
     pandas_df = get_data_from_elasticsearch()
     if not pandas_df.empty:
@@ -216,14 +226,18 @@ def update_dashboard():
             short_ma, long_ma = calculate_ma(prices_series)
             signals = generate_signals(short_ma, long_ma)
         elif selected_strategy == "Bollinger Bands":
-            middle_band, upper_band, lower_band = calculate_bollinger_bands(prices_series)
-            signals = generate_bollinger_signals(prices_series, upper_band, lower_band)
+            middle_band, upper_band, lower_band = calculate_bollinger_bands(
+                prices_series)
+            signals = generate_bollinger_signals(
+                prices_series, upper_band, lower_band)
         elif selected_strategy == 'RSI':
             rsi = calculate_rsi(prices)
-            signals = ["Buy" if rsi[i] < 30 else "Sell" if rsi[i] > 70 else "Hold" for i in range(len(rsi))]
+            signals = ["Buy" if rsi[i] < 30 else "Sell" if rsi[i]
+                       > 70 else "Hold" for i in range(len(rsi))]
 
         # Simulate trading based on signals and initial investment
-        final_value, trade_history = simulate_trading(prices, signals, initial_investment)
+        final_value, trade_history = simulate_trading(
+            prices, signals, initial_investment)
 
         # Save investment data in session state
         st.session_state['final_value'] = final_value
@@ -238,17 +252,22 @@ def update_dashboard():
             # Plot price data as candlesticks
             for i in range(1, len(prices)):
                 color = 'green' if prices[i] >= prices[i - 1] else 'red'
-                ax.vlines(i, min(prices[i], prices[i - 1]), max(prices[i], prices[i - 1]), color=color, lw=3)
+                ax.vlines(i, min(prices[i], prices[i - 1]),
+                          max(prices[i], prices[i - 1]), color=color, lw=3)
 
             # Plot moving averages
             ax.plot(short_ma, label="Short MA (10)", color='blue', alpha=0.8)
             ax.plot(long_ma, label="Long MA (50)", color='red', alpha=0.8)
 
             # Plot buy and sell signals
-            buy_signals = [i for i, signal in enumerate(signals) if signal == 'Buy']
-            sell_signals = [i for i, signal in enumerate(signals) if signal == 'Sell']
-            ax.scatter(buy_signals, [prices[i] for i in buy_signals], marker='^', color='green', label='Buy Signal', alpha=1)
-            ax.scatter(sell_signals, [prices[i] for i in sell_signals], marker='v', color='red', label='Sell Signal', alpha=1)
+            buy_signals = [i for i, signal in enumerate(
+                signals) if signal == 'Buy']
+            sell_signals = [i for i, signal in enumerate(
+                signals) if signal == 'Sell']
+            ax.scatter(buy_signals, [prices[i] for i in buy_signals],
+                       marker='^', color='green', label='Buy Signal', alpha=1)
+            ax.scatter(sell_signals, [prices[i] for i in sell_signals],
+                       marker='v', color='red', label='Sell Signal', alpha=1)
 
             # Set plot details
             ax.set_title(f'{selected_symbol} Price Change', fontsize=10)
@@ -272,8 +291,10 @@ def update_dashboard():
             # RSI Plot
             rsi = calculate_rsi(prices)
             ax.plot(rsi, label="RSI", color='purple', lw=1.5)
-            ax.axhline(70, color='red', linestyle='--', label='Overbought (70)')
-            ax.axhline(30, color='green', linestyle='--', label='Oversold (30)')
+            ax.axhline(70, color='red', linestyle='--',
+                       label='Overbought (70)')
+            ax.axhline(30, color='green', linestyle='--',
+                       label='Oversold (30)')
             ax.set_title('Relative Strength Index (RSI)', fontsize=12)
             ax.set_xlabel('Time', fontsize=10)
             ax.set_ylabel('RSI', fontsize=10)
@@ -287,16 +308,17 @@ def update_dashboard():
             st.pyplot(fig)
             plt.close(fig)
 
-
-        with plot_placeholder3.container(): 
+        with plot_placeholder3.container():
             st.header("Bollinger Bands Strategy")
             st.markdown("### Bollinger Bands are a volatility indicator that consists of a middle band (SMA), an upper band, and a lower band, which are used to assess price volatility. This plot displays the Bollinger Bands (upper, lower, and middle) along with buy/sell signals based on price action within the bands.")
 
             fig, ax = plt.subplots(figsize=(7, 4))
 
             # Bollinger Bands Plot
-            middle_band, upper_band, lower_band = calculate_bollinger_bands(prices_series)
-            bollinger_signals = generate_bollinger_signals(prices_series, upper_band, lower_band)
+            middle_band, upper_band, lower_band = calculate_bollinger_bands(
+                prices_series)
+            bollinger_signals = generate_bollinger_signals(
+                prices_series, upper_band, lower_band)
             ax.plot(prices_series, label='Price', color='green', lw=1.5)
             ax.plot(middle_band, label="Middle Band", color='blue', alpha=0.8)
             ax.plot(upper_band, label="Upper Band", color='red', alpha=0.8)
@@ -305,9 +327,11 @@ def update_dashboard():
             # Plot buy and sell signals for Bollinger Bands
             for i, signal in enumerate(bollinger_signals):
                 if signal == "Buy":
-                    ax.scatter(i, prices_series[i], color='green', marker='^', label='Buy Signal' if i == 0 else "", alpha=1)
+                    ax.scatter(i, prices_series[i], color='green', marker='^',
+                               label='Buy Signal' if i == 0 else "", alpha=1)
                 elif signal == "Sell":
-                    ax.scatter(i, prices_series[i], color='red', marker='v', label='Sell Signal' if i == 0 else "", alpha=1)
+                    ax.scatter(i, prices_series[i], color='red', marker='v',
+                               label='Sell Signal' if i == 0 else "", alpha=1)
 
             # Set plot details for Bollinger Bands
             ax.set_title('Bollinger Bands Strategy', fontsize=12)
@@ -325,7 +349,8 @@ def update_dashboard():
 
         # Update Investment Info in Sidebar
         st.sidebar.write(f"Initial Investment: ${initial_investment}")
-        st.sidebar.write(f"Final Portfolio Value: ${st.session_state['final_value']:.2f}")
+        st.sidebar.write(f"Final Portfolio Value: ${
+                         st.session_state['final_value']:.2f}")
         st.sidebar.write("Trade History:")
         st.sidebar.dataframe(st.session_state['trade_history'])
 

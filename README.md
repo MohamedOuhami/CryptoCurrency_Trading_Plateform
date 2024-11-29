@@ -34,9 +34,10 @@ The project's services are as follow :
 - Add the template named "Real-time_multi-coin_extract" from the button as shown below
 
 ![Adding the template](images/add_template.png)
-![Adding the template 2](images/add_template_2.png)
 
 - Drag and drop the template process on the canvas and choose the template that we have just imported
+
+![Adding the template 2](images/add_template_2.png)
 - Enter the putElasticSearch process and change the password to 'v01d'
 - Press CTRL+a to choose all of the processes and press Start on the left panel
 

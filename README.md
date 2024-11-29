@@ -1,150 +1,59 @@
+# Investly
+Investly is a data/web engineering app that has as goal to make the process of analysing cryptocurrencies data coming from the Binance API easy to manipulate, and give insights to the aspiring investors the opportunity to have realtime insights about their favorite currencies
 
-# INVESTLY - Data Engineering App
+## Starting the project
+To start the project, the first step would be to clone the project from GitHub, so make sure that you have Git and Docker Installed on your system
 
-## Description
-**INVESTLY** is a data engineering application that integrates with the Binance API to fetch cryptocurrency data, showcase 3 trading strategies, and simulate a trading process. The application provides:
-- Real-time cryptocurrency data via the Binance API.
-- 3 trading strategies with buy/sell signals visualized in plots.
-- A trading simulator where users can add an initial investment and see simulated trading results.
+```
+cd your_folder
+git clone -b final_version https://github.com/MohamedOuhami/cryptoCurrency_Trading_Plateform.git
+```
 
-## Table of Contents
-1. [Pulling the project and running the containers](#pulling-the-project-and-running-the-containers)
-2. [Fetching the data from Binance API](#fetching-the-data-from-binance-api)
-3. [Setting up the Docker architecture](#setting-up-the-docker-architecture)
-    - 3.1 [Version](#version)
-    - 3.2 [Networks](#networks)
-    - 3.3 [Services](#services)
-    - 3.4 [Volumes](#volumes)
-4. [Getting data from Nifi](#getting-data-from-nifi)
-5. [Handling data in Apache Spark](#handling-data-in-apache-spark)
-    - 5.1 [Creating the Spark Conf](#creating-the-spark-conf)
-    - 5.2 [Processing the data](#processing-the-data)
-6. [Trading strategies & Dashboard Development with Streamlit](#trading-strategies--dashboard-development-with-streamlit)
-    - 6.1 [Double Moving Averages](#double-moving-averages)
-    - 6.2 [RSI](#rsi)
-    - 6.3 [Bollingers Bands](#bollingers-bands)
-    - 6.4 [Simulating trading process](#simulating-trading-process)
+Now, you should be having the project in your system, to start the project, make sure that you have Docker Engine running
 
----
+```
+cd cryptoCurrency_Trading_Plateform
+docker-compose up -d
+```
 
-## 1. Pulling the project and running the containers
+Wait for a few minutes as the services are starting. *If it seems that one of the services are blocking, Press Ctrl+C, and re-run those off services from Docker desktop*
 
-### Prerequisites
-- Docker Engine installed on your system
-- Git installed on your system
+## Project Architecture
+The whole project is being ran in Docker with the different servics as seen in the figure down
+![Project Architecture](images/Binance_API.png)
+The project's services are as follow : 
+- Binance API : Fetching the data for each cryptocurrency from the Binance API
+- Apache Nifi : Data ingestion and make multiple GET requests for the Binance API and putting the data in ElasticSearch
+- ElasticSearch worker 1 : The 1st ES worker that stores and feeds data into other services
+- ElasticSearch worker 2 : To be tolerant to the high demand that can be, we added a second worker that also fetches the data
+- Apache Spark : Used for data analysis and giving insights about the cryptocurrencies
+- Streamlit : Used to deploy the webapp and see the data in realtime and do trading simulations
 
-### Instructions
-1. Clone the project repository:
-    ```bash
-    git clone -b final_version https://github.com/MohamedOuhami/cryptoCurrency_Trading_Plateform.git
-    ```
+## Launching the services
+- After running the services, you can access the NIFI process by visiting the link [NIFI homepage](http:localhost:8091/)
+- Add the template named "Real-time_multi-coin_extract" from the button as shown below
 
-2. Navigate into the project directory:
-    ```bash
-    cd cryptoCurrency_Trading_Plateform
-    ```
+![Adding the template](images/add_template.png)
 
-3. Open the project in your preferred IDE (e.g., VSCode, Nvim).
+- Drag and drop the template process on the canvas and choose the template that we have just imported
+- Enter the putElasticSearch process and change the password to 'v01d'
+- Press CTRL+a to choose all of the processes and press Start on the left panel
 
-4. Review the project’s architecture.
+## Start the Web App
+- Open a new terminal, and enter in exec mode in the spark-master container
+```
+docker exec -it spark-master bash
+```
+- Change the directory to the web-app directory
+```
+cd web_app
+```
+- Start the streamlit web app
+```
+python -m streamlit run investly.py
+```
 
-5. Modify the `.env` file to customize environment variables (like passwords).
+You should now be able to access the application from the link [Investly web app](http://localhost:8502)
+# Happy trading
 
-6. Ensure that Docker Engine is running and start the services:
-    ```bash
-    docker-compose up -d
-    ```
-
-Now, all services should be running.
-
----
-
-## 2. Fetching the data from Binance API
-
-- The data is fetched from the Binance API, which provides cryptocurrency prices in US dollars.
-- For example, to get the price of Bitcoin (BTC) in US dollars, use the following endpoint:
-    ```bash
-    https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT
-    ```
-
-- The response will look like this:
-    ```json
-    {
-      "symbol": "BTCUSDT",
-      "price": "98785.52000000"
-    }
-    ```
-
-- The project retrieves data for 10 different coins and processes it accordingly.
-
----
-
-## 3. Setting up the Docker architecture
-
-The application uses Docker to containerize several services. Below is the breakdown of the architecture:
-
-### 3.1 Version
-- Docker Compose version: `3.8`.
-
-### 3.2 Networks
-- A custom network named `binance_app_network` is used to ensure that all services can communicate securely.
-
-### 3.3 Services
-1. **Zookeeper**: A configuration management service.
-2. **NiFi Registry**: For version control of data flows.
-3. **Spark Components**: For ETL processes.
-4. **NiFi**: For real-time data integration.
-5. **ElasticSearch**: For storing and analyzing data.
-
-### 3.4 Volumes
-- Volumes are used for persisting data outside the containers, preventing data loss when containers are stopped.
-
----
-
-## 4. Getting data from Nifi
-
-The workflow in this project includes 7 NiFi processors for retrieving, processing, and storing cryptocurrency data in ElasticSearch. Steps include:
-- Fetching coin data from the Binance API.
-- Parsing the data and storing it in an ElasticSearch index.
-
----
-
-## 5. Handling data in Apache Spark
-
-### 5.1 Creating the Spark Conf
-- Apache Spark is used for handling the data transformation and analysis.
-
-### 5.2 Processing the data
-- The data fetched from the Binance API is processed using Apache Spark for further analysis and strategy implementation.
-
----
-
-## 6. Trading strategies & Dashboard Development with Streamlit
-
-The dashboard is developed using Streamlit and includes 3 different trading strategies:
-
-### 6.1 Double Moving Averages
-- Buy/sell signals are generated based on the crossing of two moving averages.
-
-### 6.2 RSI (Relative Strength Index)
-- Buy/sell signals are generated based on RSI values indicating overbought/oversold conditions.
-
-### 6.3 Bollinger Bands
-- Signals are generated based on the relationship between the price and Bollinger Bands.
-
-### 6.4 Simulating trading process
-- The app simulates a trading process, where users can input an initial investment and see how it would perform using the trading strategies.
-
----
-
-## Conclusion
-
-INVESTLY is a powerful tool for anyone interested in cryptocurrency trading. With its combination of real-time data, advanced trading strategies, and a trading simulator, it provides a comprehensive platform for testing and developing trading strategies.
-
----
-
-### Notes
-- Ensure that all dependencies are installed and configured correctly.
-- You may need to adjust your system's resources to run the containers efficiently.
-
-Enjoy using INVESTLY!
+If you have any problem setting up the project, you can email me at mohamed.ouhami2001@gmail.com

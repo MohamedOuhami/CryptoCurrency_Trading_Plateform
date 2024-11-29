@@ -27,7 +27,7 @@ This project provides a comprehensive platform for cryptocurrency trading analys
 
 ## Project Architecture
 
-![Project Architecture](misc\architecture.png)
+![Project Architecture](misc/architecture.png)
 
 ### Services
 
@@ -75,19 +75,19 @@ Ensure the following tools are installed:
 6. Verify that all containers are running.
 
    - If you encounter the following error, simply open Docker Desktop and manually start the `es01` and `es02` containers.
-     ![Docker Error](misc\docker_error.jpg)
+     ![Docker Error](misc/docker_error.jpg)
 
 7. Upload the `Real-time_multi-coin_extract.xml` template from the `nifi_workflows` folder into Apache NiFi to set up the data pipeline:
 
-   ![Upload Template](misc\upload_nifi_template.jpg)
+   ![Upload Template](misc/upload_nifi_template.jpg)
 
-   ![Drag/Drop Template](misc\drag_nifi_template.jpg)
+   ![Drag/Drop Template](misc/drag_nifi_template.jpg)
 
-   ![Nifi Workflow](misc\Nifi_template.png)
+   ![Nifi Workflow](misc/Nifi_template.png)
 
    - Ensure that you configure the Elasticsearch password specified in the `.env` file.
 
-     ![Elasticsearch](misc\Nifi_ES_Processor.jpg)
+     ![Elasticsearch](misc/Nifi_ES_Processor.jpg)
 
 8. Run the Streamlit app to view the dashboard
    - To begin the project, ensure that all containers have started successfully in Docker Desktop.
@@ -116,4 +116,4 @@ The dashboard provides:
 - Interactive tools for backtesting trading algorithms.
 - Customizable settings for strategy parameters.
 
-![Dashboard](misc\Dashboard.png)
+![Dashboard](misc/Dashboard.png)
